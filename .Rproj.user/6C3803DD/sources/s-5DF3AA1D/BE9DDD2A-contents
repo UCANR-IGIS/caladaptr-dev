@@ -1,0 +1,142 @@
+---
+title: "Working with CalAdapt Data in R"
+author: "Andy Lyons"
+date: "7/22/2019"
+output: 
+  html_document: 
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Goals of the <tt>caladaptr</tt> R Package 
+
+Provide base-level functions for importing and querying Cal-Adapt data through the API
+
+Enable light-weight decision support tools through RShiny that present Cal-Adapt data in user friendly terminology, combine with other datasets, produce user friendly output, etc. 
+
+![](images/mike-crimmins_spi-tool_1386x926.png){style="width:640px; border:1px solid gray;"}(https://uaclimateextension.shinyapps.io/SPItool/)
+
+Audience: developers
+
+# Plans
+
+Build it on GitHub
+
+Submit to [ROpenSci](https://ropensci.org/) for peer reivew
+
+Follow the guideslines and best practices for package development: https://devguide.ropensci.org/
+
+Incorporate <tt>tidyverse</tt> piping syntax (i.e., build queries with <tt>%>%</tt> operators)
+
+Import spatial data as <tt>raster</tt> and <tt>sf</tt> objects
+
+Working list of functions
+
+ca_resources()
+
+ca_
+
+
+# Searching for Data
+
+```{r get_resources, cache=TRUE}
+ca_base_url <- "http://api.cal-adapt.org/api"   ## turn this into a function
+```
+
+Question for S&B: http or https?
+
+```{r get_resources_catalog, cache=TRUE}
+#require(pkgs_req, character. only = TRUE)
+
+## Get resources
+ca_resources_resp <- httr::GET(ca_base_url)
+class(ca_resources_resp)
+
+## Parse the response object into a list
+ca_resources_data <- httr::content(ca_resources_resp, type = "application/json")
+names(ca_resources_data)
+
+```
+
+
+
+
+# Question for S&B
+
+Are the names & slugs of resources stable? (can we save them in a local file)
+
+What are the highest in demand resources? (for prioritization)
+
+
+If necessary, content negotiation can be overridden by adding the format query parameter to the URL like https://api.cal-adapt.org/api/?format=json.
+
+
+# Import a Raster Series
+
+**Question for S&B**: 'Begin' and 'End' values for raster series:
+
+Are there ever time values associated with 'begin' and 'end' values of a Raster Series?
+
+"2006-01-01T00:00:00Z"
+
+# Lingering Questions
+
+If, when, and where to cache results?
+
+Store a local directory of the resources, slugs, county boundary ids, etc.
+
+Which datasets to focus on first
+
+# Cal-Adapt API Reference
+
+## Terminology
+
+**RESOURCES**. We refer to the _datasets_ in the Cal-Adapt API as _resources_. Each resource is represented by a unique endpoint (URL). Names of resources: https://berkeley-gif.github.io/caladapt-docs/data-catalog.html
+
+**SLUGS**. A slug is a _URL friendly_ name of a resource in the API. Each climate dataset or resource has it’s own unique slug. A resource slug is generally composed of {variable}_{period}_{model}_{scenario}. Request an individual series with a provided slug. 
+
+    Resource URI Example: https://api.cal-adapt.org/api/series/tasmax_year_livneh/
+
+**RASTER SERIES**. A _Raster Series_ is a collection of individual rasters comprising an entire time series.
+
+**RASTER STORE**. A _Raster Store_ is an individual raster file and associated information like spatial resolution, coordinate system reference, and bounding box.
+
+## Query Parameters
+
+You can generally copy-paste a URI into a browser and see valid results.
+
+**Format**. If necessary, content negotiation can be overridden by adding the format query parameter to the URL like: https://api.cal-adapt.org/api/?format=json
+
+
+**PageSize and Page**. 
+ 
+The default pagesize (number of records returned) is 10. 
+ 
+https://api.cal-adapt.org/api/series/?pagesize=100
+ 
+https://api.cal-adapt.org/api/series/?page=2
+ 
+**Constructing Queries with Multiple Parameters**
+
+First parameter should start with <tt>/?paramname=value</tt>
+
+Concatenate additional parameters with <tt>&</tt>
+
+Do not enclose strings in quotes. Replace spaces with '+'
+
+Question for S&B: <tt>%20</tt> seems to work as well as <tt>+</tt>
+
+Example:
+
+https://api.cal-adapt.org/api/series/?name=yearly+average+maximum+temperature&pagesize=100'
+
+
+
+
+
+
+

@@ -1,0 +1,331 @@
+---
+title: "Working with the Cal-Adapt API in R"
+author: "Andy Lyons"
+date: "7/22/2019"
+output: 
+  html_document: 
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: console
+---
+<style>
+h1 {margin-top:2em; font-size:2em; font-weight:bold; color:darkgreen;}
+p, li {font-size:140%;}
+.tryit {margin: 1em 2em; padding:0.5em; border:2px solid gray; color:brown; font-size:90%;}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(httr)
+library(assertthat)
+library(raster)
+```
+
+# Goals of the <tt>caladaptr</tt> R Package
+
+<tt>caladaptr</tt> will be an API client package.
+
+The intended audience is developers.
+
+Primary role is to provide low-level functions for querying and importing Cal-Adapt data through the API.
+
+Enable light-weight decision support tools through RShiny that present Cal-Adapt data in user friendly terminology, combine with other datasets, produce user friendly output, etc. 
+
+# Example Applications
+
+My Ranch Climate History
+
+Landscaping Species Selection
+
+![](images/mike-crimmins_spi-tool_1386x926.png){style="width:640px; border:1px solid gray;"}(https://uaclimateextension.shinyapps.io/SPItool/)
+
+# Development Plans
+
+Build it on GitHub
+
+Submit to [ROpenSci](https://ropensci.org/) for peer reivew
+
+Follow the guideslines and best practices for package development: https://devguide.ropensci.org/
+
+Convert spatial data as <tt>raster</tt> and <tt>sf</tt> objects
+
+Incorporate <tt>tidyverse</tt> piping syntax (i.e., build queries with <tt>%>%</tt> operators)
+
+Main dependencies: <tt>httr</tt>, <tt>sf</tt>
+
+Working list of functions
+
+- `ca_resources()` - names of raster series, individual rasters
+- `ca_getraster()` - import raster(s)
+- `ca_qryraster()` - query raster(s) 
+
+# API Terminology
+
+**RESOURCES**. We refer to the _datasets_ in the Cal-Adapt API as _resources_. Each resource is represented by a unique endpoint (URL). Names of resources: https://berkeley-gif.github.io/caladapt-docs/data-catalog.html
+
+**RASTER SERIES**. A _Raster Series_ is a collection of individual rasters comprising an entire time series.
+
+**RASTER STORE**. A _Raster Store_ is an individual raster file and associated information like spatial resolution, coordinate system reference, and bounding box.
+
+**SLUGS**. A slug is a _URL friendly_ name of a resource in the API. Each climate dataset or resource has it’s own unique slug. A resource slug is generally composed of {variable}_{period}_{model}_{scenario}. Request an individual series with a provided slug. 
+
+Resource URI Example: <tt>https://api.cal-adapt.org/api/series/tasmax_year_livneh/</tt>
+
+
+# Searching for Data
+
+```{r get_resources, cache=TRUE}
+ca_base_url <- "http://api.cal-adapt.org/api/"   ## turn this into a function
+```
+
+<div class="tryit">
+**Question for S&B**: http or https?
+</div>
+
+
+```{r get_resources_catalog, cache=TRUE}
+## Request resources (datasets)
+ca_resources_resp <- httr::GET(ca_base_url)
+class(ca_resources_resp)
+
+## Trap response problems
+## Stop everything for a return code >= 400
+msg_code400 <- "Server returned an error code. Check your request."
+assert_that(ca_resources_resp$status_code < 400, msg = msg_code400)
+## Give a warning for other things
+warn_for_status(ca_resources_resp, task = "retrieve list of resources")  
+
+## Parse the response object into a list
+ca_resources_data <- httr::content(ca_resources_resp, type = "application/json")
+class(ca_resources_data)
+names(ca_resources_data)
+ca_resources_data$series
+```
+
+# Get Details about available Raster Series
+
+```{r rs_get_details, cache=TRUE}
+
+(url_series_all <- paste0(ca_base_url, "series", "/"))
+qry_params_lst <- list(pagesize=100)
+
+ca_rstseries_resp <- httr::GET(url_series_all, query=qry_params_lst, httr::content_type_json())
+
+## Trap response problems
+assert_that(ca_resources_resp$status_code < 400, msg=msg_code400)
+warn_for_status(ca_resources_resp, task = "retrieve list of resources")
+
+## Convert response to a list
+ca_rstseries_data <- httr::content(ca_rstseries_resp, type = "application/json")
+
+## Explore list
+names(ca_rstseries_data)
+ca_rstseries_data$count
+ca_rstseries_data[["next"]]
+ca_rstseries_data[["previous"]]
+
+class(ca_rstseries_data[["results"]])
+names(ca_rstseries_data[["results"]])  ## no names
+length(ca_rstseries_data[["results"]])
+
+class(ca_rstseries_data[["results"]][[1]])
+names(ca_rstseries_data[["results"]][[1]])
+ca_rstseries_data[["results"]][[1]]$name
+
+## Return the names of the datasets in this object
+sapply(ca_rstseries_data[["results"]], function(x) x$name )
+
+## Return the slugs of the datasets in this object
+sapply(ca_rstseries_data[["results"]], function(x) x$slug)
+
+```
+
+<div class="tryit">
+**Question for S&B**: Are the names & slugs of resources stable? (i.e., can we save them as part of the package?)
+
+Does each Raster Series have a help page?
+</div>
+
+# Search for Resource by Name
+
+```{r search_by_name, cache=TRUE}
+(url_series_all <- paste0(ca_base_url, "series", "/"))
+qry_params_lst <- list(name="yearly average maximum temperature", pagesize=100)
+
+# Submit request
+rs_maxtemp_resp <- httr::GET(url_series_all, query=qry_params_lst, httr::content_type_json())
+
+## Trap response problems
+assert_that(rs_maxtemp_resp$status_code < 400, msg=msg_code400)
+warn_for_status(rs_maxtemp_resp, task = "retrieve list of resources matching name")
+
+## Convert response to a list
+rs_maxtemp_data <- httr::content(rs_maxtemp_resp, type = "application/json")
+
+## Check for no results
+rs_maxtemp_data$count
+if (rs_maxtemp_data$count==0) warning("No results returned from query")
+#assert_that(ca_precip3_data$count > 0)
+
+## List names and URLs returned
+sapply(rs_maxtemp_data$results, function(x) x$slug)
+
+```
+
+# Get the metadata details for a specific Raster Series
+
+```{r rs_getdetails, cache=TRUE}
+rseries_slug <- "tasmax_year_CNRM-CM5_rcp45"
+(rseries_url <- paste0(ca_base_url, "series", "/", rseries_slug, "/"))
+qry_params_lst <- list(pagesize=100)
+
+# Submit request
+rseries_tmax_resp <- httr::GET(rseries_url, query=qry_params_lst, httr::content_type_json())
+
+## Trap response problems
+assert_that(rseries_tmax_resp$status_code < 400, msg=msg_code400)
+warn_for_status(rseries_tmax_resp, task = "retrieve metadata for a raster series")
+
+## Convert response to a list
+rseries_tmax_data <- httr::content(rseries_tmax_resp, type = "application/json")
+
+## Explore results
+class(rseries_tmax_data)
+names(rseries_tmax_data)
+
+rseries_tmax_data$name
+rseries_tmax_data$slug; rseries_tmax_data$url
+rseries_tmax_data$begin; rseries_tmax_data$end
+
+## Convert begin and end values to R objects (POSIXlt)
+(begin_dte <- strptime(rseries_tmax_data$begin, format="%Y-%m-%dT%T", tz="UTC"))
+(end_dte <- strptime(rseries_tmax_data$end, format="%Y-%m-%dT%T", tz="UTC"))
+
+## How to check for no results??
+
+## View rasters in this Raster Series
+length(rseries_tmax_data$rasters)
+sapply(rseries_tmax_data$rasters, function(x) x[1])
+
+```
+
+<div class="tryit">
+**Question for S&B**: 'Begin' and 'End' values for raster series look like: "<tt>2006-01-01T00:00:00Z"</tt>
+
+Are there ever _time values_ associated with 'begin' and 'end' values of a Raster Series?
+
+</div>
+
+# Import a Raster 
+
+```{r import_raster_pt1, cache=TRUE}
+## First we view the raster store objects
+rseries_slug <- "tasmax_year_CNRM-CM5_rcp45"
+(rstore_list_url <- paste0(ca_base_url, "series", "/", rseries_slug, "/", "rasters", "/"))
+qry_params_lst <- list(pagesize=100)
+
+# Submit request
+rstore_list_resp <- httr::GET(rstore_list_url, query=qry_params_lst, httr::content_type_json())
+
+## Trap response problems
+assert_that(rstore_list_resp$status_code < 400, msg=msg_code400)
+warn_for_status(rstore_list_resp, task = "retrieve metadata for a raster series")
+
+## Convert response to a list
+rstore_list_data <- httr::content(rstore_list_resp, type = "application/json")
+
+## Explore results
+names(rstore_list_data)
+rstore_list_data$count
+
+class(rstore_list_data$results)
+length(rstore_list_data$results)
+
+## Look at one of the results 
+class(rstore_list_data$results[[1]])
+names(rstore_list_data$results[[1]])
+
+## Look at the tile URL
+rstore_list_data$results[[1]]$tileurl
+```
+
+<div class="tryit">
+**Question for S&B**: can we use a Raster Store as tiles in a leaflet map?
+</div>
+
+```{r import_raster_pt2, cache=TRUE}
+rstore_list_data$results[[1]]$units
+rstore_list_data$results[[1]]$xpixsize
+
+## Look at the geom (which in this case is the extent of the raster)
+(tif_bb_lst <- rstore_list_data$results[[1]]$geom)
+class(tif_bb_lst)
+length(tif_bb_lst)
+names(tif_bb_lst)
+tif_bb_lst$type
+str(tif_bb_lst$coordinates)
+```
+
+**Puzzle**: how to work with geom objects returned from the API. Has to do with how <tt>httr::content()</tt> converts GeoJSON objects to nested lists of coordinates.
+
+```{r import_raster_pt3, cache=TRUE}
+## Get the GeoTIFF
+(tif_url <- rstore_list_data$results[[1]]$image)
+class(tif_url)
+
+library(raster)
+this_img_ll <- raster(tif_url)
+this_img_ll
+plot(this_img_ll)
+```
+
+# Lingering Questions
+
+Other API functions? cropping?
+
+If, when, and where to cache results?
+
+Store a local directory of the resources, slugs, county boundary ids, etc.
+
+What are the highest in demand resources? Which datasets to focus on first.
+
+How to create links to metadata
+
+# Cal-Adapt API Reference - split this off
+
+## Query Parameters
+
+You can generally copy-paste a URI into a browser and see valid results.
+
+**Format**. If necessary, content negotiation can be overridden by adding the format query parameter to the URL like: https://api.cal-adapt.org/api/?format=json
+
+
+**PageSize and Page**. 
+ 
+The default pagesize (number of records returned) is 10. 
+ 
+https://api.cal-adapt.org/api/series/?pagesize=100
+ 
+https://api.cal-adapt.org/api/series/?page=2
+ 
+**Constructing Queries with Multiple Parameters**
+
+First parameter should start with <tt>/?paramname=value</tt>
+
+Concatenate additional parameters with <tt>&</tt>
+
+Do not enclose strings in quotes. Replace spaces with '+'
+
+Question for S&B: <tt>%20</tt> seems to work as well as <tt>+</tt>
+
+Example:
+
+https://api.cal-adapt.org/api/series/?name=yearly+average+maximum+temperature&pagesize=100'
+
+
+
+
+
+
+

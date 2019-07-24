@@ -1,0 +1,6 @@
+base
+httr
+assertthat
+sp
+raster
+sf

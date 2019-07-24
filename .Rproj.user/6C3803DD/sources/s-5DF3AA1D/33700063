@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1563848696184.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "33700063",
+    "lastKnownWriteTime" : 1563979175,
+    "last_content_update" : 1563979175549,
+    "path" : "C:/GitHub/cal-adapt/caladaptr-dev/caladapt-api-test.R",
+    "project_path" : "caladapt-api-test.R",
+    "properties" : {
+        "cursorPosition" : "519,0",
+        "scrollLine" : "510",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
