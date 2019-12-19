@@ -1,0 +1,179 @@
+---
+title: "Intro to caladaptr"
+author: "Andy Lyons"
+date: "12/18/2019"
+output: 
+  html_document: 
+    smart: no
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: console
+---
+<style>
+h1 {margin-top:2em; font-size:2em; font-weight:bold; color:darkgreen;}
+h2 {font-size:1.5em; color:darkred;}
+p, li {font-size:20px;}
+.tryit {margin: 1em 2em; padding:0.5em; border:2px solid darkred; color:darkred; font-size:90%;}
+li.tocify-item {font-size:100%;}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Background
+
+## Goals of the <tt>caladaptr</tt> R Package
+
+- <tt>caladaptr</tt> is an **API client package** for R.
+
+    - Primary role is to provide low-level functions for **querying** and **importing** Cal-Adapt data through the API.
+
+    - Secondary roles might be computing generic derived dataset not yet available on the API (e.g., growing degree days).
+
+- The intended audience is **developers**.
+
+- Accepts and returns standard data classes (e.g., sf, raster)
+
+- Built using guidelines from [rOpenSci](https://devguide.ropensci.org/){target="_blank"} with plans to submit the package for peer review. 
+
+- Enable light-weight decision support tools through RShiny that present Cal-Adapt data in user friendly terminology, combine with other datasets, produce user friendly output, etc. 
+
+- Plans for a companion ebook with code recipes (created with bookdown, [example](https://ucanr-igis.github.io/360photos/){target="_blank"})
+
+- Earlier cookbook: https://ucanr-igis.github.io/caladaptr-dev/cal-adapt-api_cookbook.html
+
+# Installation
+
+Because the package is currently in a private GitHub repo, you need to 
+
+1. Get yourself added to the repo as an editor
+2. Generate for yourself a Personal Access Token (with the repo scope  enabled)
+
+```{r get_github_token, eval=FALSE}
+gh_token_fn <- "~/My Keys/github_pat.txt"  ## For safety the token is saved in the first line of a text filee
+f <- file(gh_token_fn, open = "rt")           
+andys_github_pat <- readLines(f, n=1)      ## n=1 read first line only
+close(f)
+# remotes::install_github("UCANR-IGIS/caladaptr", auth_token = andys_github_pat)
+```
+
+Load the package:
+
+```{r install_pkg, cache=TRUE, eval=TRUE}
+library(caladaptr)
+packageVersion("caladaptr")
+```
+
+# Summary of Features
+
+Only working with raster series for now
+
+Only using querying for now (time series end point)
+
+ - downloading rasters will come later
+
+Users can select which raster series they want to get by passinig by the component pieces (GCM + scenario + climate variable + temporal aggregation)
+
+ - built-in constants so they don't have to remember spellings
+
+Querying
+
+   - [`units`](https://rdrr.io/cran/units/) package used to record units (e.g., Kelvin)
+
+   - For now just points are supported  
+       - sf package  
+       - future: zip codes, counties, Watersheds, congressional districts
+
+# Constants
+
+```{r shohwconstants, cache=TRUE, eval=TRUE}
+ca_climvar
+ca_gcm
+ca_scenario
+ca_period
+```
+
+# Functions
+
+`ca_rs_getinfo`  
+`ca_rs_url`
+`ca_fmtdate`
+`ca_res_getinfo`  
+
+## Function Naming Logic
+
+- All constants and functions start with <em>ca_</em>
+
+- Second piece specifies dataset(s):
+
+    - <em>_rs</em> raster series  
+
+- Third part is the verb:
+
+    - <em>_getinfo</em> retrieve metadata  
+
+    - <em>_getvals</em> retrieve values  
+
+    - <em>_getrst</em> retrieve raster  
+
+
+# `ca_rs_getinfo`
+
+Returns a data frame containing info about all raster series
+
+Cached version saved in package
+
+```{r}
+library(caladaptr)
+args(ca_rs_getinfo)
+
+## Refresh
+## y <- ca_rs_getinfo(retrieve=TRUE)
+
+## View to help find a raster series
+#View(y)
+```
+
+# `ca_rs_url`
+
+Returns a URL (slug) for a raster series given CGM, RCP, etc.
+
+Cross-chcecks against available raster series
+
+Used as a helper function
+
+```{r ca_rs_url, cache=TRUE}
+args(caladaptr::ca_rs_url)
+
+## Compute some URLs
+ca_rs_url(climvar=c("tasmax", "tasmin"), scenario = ca_scenario[1:2], period="year")
+
+## What happens if you try to get raster series that don't exist??
+ca_rs_url(climvar=c("tasmax", "tasmin"), scenario = ca_scenario[1:2], period="month")
+
+```
+
+# `ca_rs_getvals`
+
+Returns time series values for a location
+
+
+
+# Next Steps
+
+- Expand support for `loc` argument
+
+    - sf Polygons
+    - Built-in polygon layers (e.g. Counties, Census Tracts) 
+    - Zip codes  
+    - Multiple locations
+
+
+# Questions for the Team
+
+1. Any thoughts / preferences about license? Currently using [CC0](https://creativecommons.org/publicdomain/zero/1.0/)
+
+
+
