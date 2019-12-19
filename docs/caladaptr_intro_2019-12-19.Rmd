@@ -126,8 +126,7 @@ Returns a data frame containing info about all raster series
 Cached version saved in package
 
 ```{r}
-library(caladaptr)
-args(ca_rs_getinfo)
+args(caladaptr::ca_rs_getinfo)
 
 ## Refresh
 ## y <- ca_rs_getinfo(retrieve=TRUE)
@@ -158,6 +157,39 @@ ca_rs_url(climvar=c("tasmax", "tasmin"), scenario = ca_scenario[1:2], period="mo
 # `ca_rs_getvals`
 
 Returns time series values for a location
+
+```{r ca_rs_getvals, cache=TRUE}
+args(caladaptr::ca_rs_getvals)
+```
+
+`loc` will accept a numeric vector (long, lat), sf object, reference to a pre-built vector layer, etc.
+
+`stat` will be a summary function
+
+## Query a Point Location
+
+```{r}
+library(caladaptr)
+
+## Define a Point
+pt <- c(-121.4687,38.5938)
+
+## Define rasters
+data_urls <- ca_rs_url(climvar = "tasmax", period="day", gcm="HadGEM2-ES", scenario = c("rcp45", "rcp85"))
+data_urls
+
+## Define date range
+dates <- as.Date(c("2050-01-01", "2050-01-31"))
+
+## Get the values for this point
+my_vals <- ca_rs_getvals(data_urls, loc=pt, dates=dates)
+names(my_vals)
+hist(my_vals[["tasmax_day_HadGEM2-ES_rcp45"]]$val)
+hist(my_vals[["tasmax_day_HadGEM2-ES_rcp85"]]$val)
+
+```
+
+
 
 
 
