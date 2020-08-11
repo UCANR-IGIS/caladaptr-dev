@@ -1,0 +1,183 @@
+---
+title: "Reverse Engineering Cal-Adapt API Slugs to Create a Machine Readable Data Catalog of Raster Series"
+date: August 10, 2020
+author: Andy
+output: html_document
+---
+
+```{css echo = FALSE}
+h1 {
+  font-weight: bold;
+  color: dimgray;
+}
+h1.title {
+  color: black;
+}
+h2 {
+  font-weight: bold;
+  font-size: 22px;
+  color: darkgreen;
+}
+
+h3 {
+  font-weight: bold;
+  font-size: 18px;
+  color: black;
+}
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+\
+
+# Background
+
+One of the ways that programmatic interfaces to the Cal-Adapt API (such as the R package and ArcGIS Pro toolbox) aim to make life easier for users is by presenting 'user-friendly' arguments (such as the name of a GCM, RCP, etc.) and turning those into URLs for API requests. A key element of many API URLs is the slug. Programming interfaces therefore need a roadmap to to convert arguments from users into slugs.
+
+We have not seen something like a machine readable data dictionary for raster series on Cal-Adapt.org (this would be helpful). In the interim, what follows below is an effort to reverse engineer the naming convention for raster series slugs, with the end goal of creating the equivalent of a lookup table for raster series.
+
+# Explore Raster Series Slugs
+
+We first get all the raster series as a data frame using the `ca_catalog_rs` function from the caladaptr package.
+
+```{r}
+library(tibble); library(dplyr); library(purrr); library(caladaptr)
+
+rs_cat_tbl <- ca_catalog_rs(cache = TRUE)
+glimpse(rs_cat_tbl)
+```
+
+\
+
+There are 830 raster series. Look at just the 'slug'. We'll select 50 random.
+
+```{r message=FALSE}
+rs_cat_tbl %>% slice_sample(n = 50) %>% pull(slug)
+```
+
+\
+
+Upon inspection, it would appear that raster series with four-part slugs (i.e, four parts separated by underscores) are primarily those that would be of most use to users aiming to do their own analyses.
+
+`{climate-variable}_{period}_{gcm}_{scenario}`
+
+Following this assumption, we identify those rows raster series where the slug has 4 pieces separated by underscores.
+
+```{r}
+slug_pts <- strsplit(rs_cat_tbl$slug, split = "_")
+slug4_idx <- which(sapply(slug_pts, length) == 4)
+length(slug4_idx)
+```
+
+\
+
+Therefore there are 605 raster series that seem to follow a pattern of:
+
+`{climate-variable}_{period}_{gcm}_{scenario}`
+
+Next we parse those 4-part slugs to a data frame:
+
+```{r}
+slug4_pts <- slug_pts[slug4_idx]
+
+slg4_tbl <- slug4_pts %>% {
+  tibble(
+    cvar = map_chr(., 1),
+    per = map_chr(., 2),
+    gcm = map_chr(., 3),
+    scn = map_chr(., 4)
+  )
+}
+glimpse(slg4_tbl)
+```
+
+\
+
+Next, look at the values in each of the four slots.
+
+```{r}
+## Climate variable
+table(slg4_tbl$cvar)
+
+## Period
+table(slg4_tbl$per)
+
+## GCM
+table(slg4_tbl$gcm)
+
+## Emissions Scenario
+table(slg4_tbl$scn)
+```
+
+\
+
+This suggests that the slug naming template:
+
+`{climate-variable}_{period}_{gcm}_{scenario}`
+
+works for many of the datasets users would want. 
+
+To test this out, lets use the following lists for the four parts of the slug (these are bundled constants with `caladaptr`):
+
+```{r}
+## Climate variables
+ca_climvar
+
+## Temporal period of aggregation
+ca_period
+
+## GCMs
+ca_gcm
+
+## Emission scenarios
+ca_scenario
+```
+
+\
+
+Next, we compute all permutations of these four variables, and construct a predicted slug based on the  apparent template.
+
+```{r}
+vpge_df <- expand.grid(climvar = ca_climvar, 
+                       period = ca_period, 
+                       gcm = ca_gcm, 
+                       scen = ca_scenario) %>% 
+  mutate(predicted_slug = paste(climvar, period, gcm, scen, sep="_"))
+nrow(vpge_df)
+head(vpge_df)
+```
+
+\
+
+Next, we see how many of these theoretical slugs are actual slugs, and which ones do not have corresponding raster series:
+
+```{r}
+## Which of these are actual slugs?
+calapt_rs_found <- (tolower(vpge_df$predicted_slug) %in% tolower(rs_cat_tbl$slug))
+table(calapt_rs_found)
+```
+
+\
+
+The following are syntactically correct raster series slugs are *not* found in Cal-Adapt:
+
+```{r}
+sort(vpge_df$predicted_slug[!calapt_rs_found])
+```
+
+\
+
+Conversely, the following are **actual** "4 part" slugs in Cal-Adapt that **do not match** a combination of the built-in variables. We have to ask ourselves - are these useful to present to users?
+
+```{r}
+slugs4 <- rs_cat_tbl$slug[slug4_idx]
+length(slugs4)
+slugs4[!slugs4 %in% vpge_df$predicted_slug]
+```
+
+
+

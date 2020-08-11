@@ -32,7 +32,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
     - Secondary roles might be computing generic derived dataset not yet available on the API (e.g., growing degree days).
 
-- The intended audience is **developers**.
+- The intended audience is **experienced R users** (not necessarily climate scientists).
 
 - Accepts and returns standard data classes (e.g., sf, raster)
 
