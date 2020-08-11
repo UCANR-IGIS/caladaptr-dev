@@ -7,8 +7,9 @@ output: html_document
 
 ```{css echo = FALSE}
 h1 {
+  font-size: 22px;
   font-weight: bold;
-  color: dimgray;
+  color: darkgreen;
 }
 h1.title {
   color: black;
@@ -16,7 +17,7 @@ h1.title {
 h2 {
   font-weight: bold;
   font-size: 22px;
-  color: darkgreen;
+  color: dimgray;
 }
 
 h3 {
@@ -38,9 +39,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 One of the ways that programmatic interfaces to the Cal-Adapt API (such as the R package and ArcGIS Pro toolbox) aim to make life easier for users is by presenting 'user-friendly' arguments (such as the name of a GCM, RCP, etc.) and turning those into URLs for API requests. A key element of many API URLs is the slug. Programming interfaces therefore need a roadmap to to convert arguments from users into slugs.
 
-We have not seen something like a machine readable data dictionary for raster series on Cal-Adapt.org (this would be helpful). In the interim, what follows below is an effort to reverse engineer the naming convention for raster series slugs, with the end goal of creating the equivalent of a lookup table for raster series.
+We have not seen something like a machine readable data dictionary for raster series on Cal-Adapt.org (this would be helpful). In the interim, what follows below is an effort to reverse engineer the naming convention for raster series slugs, with the end goal of creating the equivalent of a lookup table that maps parameter sets onto raster series slugs.
 
-# Explore Raster Series Slugs
+# Explore Raster Series Slug Names
 
 We first get all the raster series as a data frame using the `ca_catalog_rs` function from the caladaptr package.
 
@@ -79,6 +80,8 @@ Therefore there are 605 raster series that seem to follow a pattern of:
 
 `{climate-variable}_{period}_{gcm}_{scenario}`
 
+\
+
 Next we parse those 4-part slugs to a data frame:
 
 ```{r}
@@ -92,8 +95,14 @@ slg4_tbl <- slug4_pts %>% {
     scn = map_chr(., 4)
   )
 }
-glimpse(slg4_tbl)
 ```
+
+
+```{r}
+DT::datatable(slg4_tbl, options = list(pageLength=50, order = list(list(0, 'asc'))))
+```
+
+
 
 \
 
@@ -120,6 +129,8 @@ This suggests that the slug naming template:
 `{climate-variable}_{period}_{gcm}_{scenario}`
 
 works for many of the datasets users would want. 
+
+## Proposed Parameters for a Lookup Table for R Users
 
 To test this out, lets use the following lists for the four parts of the slug (these are bundled constants with `caladaptr`):
 
@@ -179,5 +190,5 @@ length(slugs4)
 slugs4[!slugs4 %in% vpge_df$predicted_slug]
 ```
 
-
+In addition to these, there are approximately `r 831 - 605` other raster series available on the API - which of those would be useful to share with R and GIS users?
 
