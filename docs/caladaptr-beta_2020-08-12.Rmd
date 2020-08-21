@@ -10,6 +10,11 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+klippy::klippy()
+```
+
+```{r klippy, echo=FALSE, include=TRUE}
+klippy::klippy("")
 ```
 
 ```{css echo = FALSE}
@@ -37,17 +42,37 @@ div.details {
   margin: 1em 3em;
   padding: 1em;
 }
+.copyme {
+  background-color:#e6fee6;
+}
 
 ```
 
 \
 
-![](images/caladapr-logo_600x120x256.png)
-<span style="font-size:140%; font-style:italic;">Beta</span>
+![](images/caladaptr-beta_logo.svg){style="width:400px;"}
 
 \
 
-# Introduction
+<!--- 
+Workfow examples to add
+ - start with point example
+ - then add preset AOIs
+---->
+
+# Cal-Adapt
+
+<!------
+bullet points about Cal-Adapt
+----->
+
+![](images/caladapt-data_800x260.png){style="display:block; margin:1em auto;"}
+
+\
+
+# caladaptR
+
+![](images/caladaptr_workflow_630x524x256.png){style='width:400px;'}
 
 - <tt>caladaptr</tt> is an **API client package** for R.
 
@@ -65,11 +90,6 @@ div.details {
 
 - Plans for a companion 'cookbook' of code recipee
 
-
-# Usage
-
-![](images/caladaptr_workflow_780x350x256.png)
-
 \
 
 # Installation
@@ -83,7 +103,7 @@ devtools::install_github("UCANR-IGIS/caladaptr")
 
 Once installed, you can load the package into memory:
 
-```{r}
+```{r load_ca, cache=TRUE}
 library(caladaptr)
 ```
 
@@ -101,78 +121,135 @@ my_api_call <- ca_loc_pt() %>%     ## location
 ```
 
 <div class="details">
-**Some Ugly Details**
+**Boring Details**
 
 A Cal-Adapt API call objects is a list of class `ca_apireq`. Constructor functions fill in the different list elements. The underlying structure of a `ca_apireq` object can be seen by looking at the structure of the object returned by `ca_apireq()`"
 
-```{r}
+```{r apireq}
+library(caladaptr)
 x <- ca_apireq()
 x
 ```
 
 </div>
 
-## API Constructors
+# API Constructors
 
-### Location Constructors
+## Location Constructors
+
+Add a location to your API call with **one** of the following: 
 
 ```{r, echo=FALSE, results='asis'}
 library(kableExtra)
-tbl_vec <- c("ca_loc_aoipreset() **", "one of the preset areas of interest", "ca_loc_pt() **", "points (as a data frame)", "ca_loc_sf()", "any sf object", "ca_loc_zip()", "zipcode (centroid)")
+tbl_vec <- c("<strong>ca_loc_aoipreset()</strong>", "a preset area of interest (e.g., census tract)", "<strong>ca_loc_pt()</strong>", "points (as a data frame)", "ca_loc_sf()", "any sf data frame (point or polygon)", "ca_loc_zip()", "zipcode (centroid)")
 tbl_mat <- matrix(tbl_vec, byrow=TRUE, ncol=2, dimnames=list(1:4, c("Location Function", "Accepts")))
-knitr::kable(tbl_mat, format = "html") %>% kable_styling() %>% column_spec(column=1, monospace = TRUE) 
+knitr::kable(tbl_mat, format = "html", escape=FALSE) %>% kable_styling() %>% column_spec(column=1, monospace = TRUE) 
 ```
 
-**`ca_loc_aoipreset()`**
+### `ca_loc_aoipreset()`
 
-```{r}
+Cal-Adpat API has 
+
+```{r eval=TRUE, class.source="klippy copyme"}
+library(caladaptr)
 args(ca_loc_aoipreset)
-
 api1 <- ca_loc_aoipreset(type = "counties", idfld = "name", idval = "Fresno")
-
 ```
 
-### Dataset Constructors
-
-**`ca_dataset()`**
+`type` can be *one* of the following:
 
 ```{r}
-args(ca_dataset)
-
-api1 <- api1 %>% ca_dataset(gcm = gcms[1:4], scenario = scenarios)
-
+aoipreset_types
 ```
 
-### Climate Variables Constructors
+Each of the presets comes with an attribute table (data frame) that you can use to specify which specific area(s) you want to query. For this, you need to pass the name of a field with unique values, as well as the value(s) you want to query.
 
-**`ca_cvar()`**
+To get the name of field(s) you can use to specify unique areas, run `aoipreset_idflds`. For example the census tracts layers has the following fields available:
 
 ```{r}
+aoipreset_idflds$censustracts
+```
+
+To see a list of valid id values you can use:
+
+```{r}
+head(aoipreset_idval$censustracts)
+```
+
+Spatial aggregation summary statistic - _**important**_
+
+All of the preset Areas of Interest are **polygons**. This means if you want to get numeric values back (as opposed to rasters), you need to tell Cal-Adapt how you want the pixel values that cover the polygon to be summarized. The options are `mean`, `max`, `min`, `median`, and `sum`, and you pass this with the `stat` argument. Note this argument only applies if you feed your API Request to `ca_getvals()`. If you feed it got `ca_getrst()` you'll get back a raster stack for each area of interest.
+
+### `ca_loc_pt()`
+
+You can specify one or more point locations as your location(s) of interest using `ca_loc_pt()`. This function requires two arguments. `coords` should a two-column data frame or matrix with the x (longitude) and y (latitude) coordinates in columns 1 and 2 respectively. `id` (optional) should be a vector of unique values that identify each point.
+
+```{r}
+args(ca_loc_pt)
+
+mypts <- data.frame(pt_id = c("Site1", "Site2", "Site3"),
+                    lon = c(-122.6, -121.1, -119.4),
+                    lat = c(40.1, 38.1, 35.6))
+
+## Example
+capi <- ca_loc_pt(coords = mypts[ , c("lon", "lat")], id = mypts$pt_id)
+capi
+```
+
+### `ca_loc_sf()`
+
+*coming soon!*
+
+### `ca_loc_zip()`
+
+*coming soon!*
+
+
+## Dataset Constructors
+
+### `ca_gcm()`
+
+```{r eval = FALSE}
+args(ca_gcm)
+
+api1 <- api1 %>% ca_gcm(gcm = gcms[1:4])
+```
+
+### `ca_scenario()`
+
+```{r eval = FALSE}
+args(ca_gcm)
+
+api1 <- api1 %>% ca_gcm(gcm = gcms[1:4])
+```
+
+
+## Climate Variables Constructors
+
+### `ca_cvar()`
+
+```{rn eval=FALSE}
 args(ca_cvar)
 
 api1 <- api1 %>% ca_cvar(cvar = "tasmax")
 
 ```
 
-### Date constructors
+## Date constructors
 
-**`ca_dates(dt1, dt2)`**  
-**`ca_years(yr1, yr2)`**
+### `ca_dates(dt1, dt2)`
 
-*Note: temporal aggregation options are passed in `ca_options()`*
+dt1 and dt2 are the start and end dates of the time period of interest, and should be entered as character objects in the form 'yyyy-mm-dd'.
 
+### `ca_years(yr1, yr2)`
 
-### Options constructors
+*Note: temporal aggregation options are passed in `ca_loc_aoipreset()` and `ca_loc_sf)()`*.
 
-- `ca_options(temporal_ag, spatial_ag)`  
-
-
-*On the chopping block: ca_tempag() - temporal aggregation (now under options)  *
-
-
-## Data Fetching Functions
+# Data Fetching Functions
 
 Once you have a ca_apireq object, you next feed it into a function that actually fetches data:
+
+## getvalues
 
 Get values (as a list or matrix).
 
@@ -180,20 +257,35 @@ Get values (as a list or matrix).
 args(ca_getvals)
 ```
 
-if SPARSE = TRUE & Vector AOI (whether preset of uploaded sf)
 
-Data Structure Returned
+```{r}
 
-Location: Points, Zip Codes
-
-Plan for the general case - multiple points
-  It'd be nice to include ID values with the points, so the results can be merged back
-  
+```
 
 
-# Example: Retrive Maximum Daily Heat for a Single Point
 
-\
+## Reshaping the output
+
+ca_val2tbl
+
+Pivot table example
+
+
+# Example: Retrive Average Max Temperature for Point for 4 Priority GCMs and RCP45, Plot over time
+
+(mimic the climate snapshot tool)
+
+Select a point. Retrieve annual 
+
+# Example 
+
+Join with census data (using tidycensus)
+
+
+# Example
+
+Shiny GUI
+
 
 # Feedback
 
